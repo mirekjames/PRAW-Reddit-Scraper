@@ -14,7 +14,7 @@ parser.add_argument("-time", help="If you're sorting by top, please enter a time
 parser.add_argument("-numberOfPosts", help="Please enter a number of posts to scrape. Default is 1000.", default="5")
 parser.add_argument("-query", help="Please enter a query to search for in the subreddit.", required=False)
 parser.add_argument("-filename", help="Please enter a filename for the scraped data.")
-parser.add_argument("-awards", help="If you want to get the awards a post / comment has (e.g. Reddit Gold), set -awards to y. Warning: the awards on some subreddits may mess up your data.", default="no")
+parser.add_argument("-awards", help="If you want to get the awards a post / comment has (e.g. Reddit Gold), set -awards to 'true'. Warning: the awards on some subreddits may mess up your data.", default="false")
 args = parser.parse_args()
 
 # Converts scraped data time stamps from UTC to 
@@ -116,7 +116,7 @@ def getPosts():
         posts_dict["NSFW"].append(post.over_18)
 
         # Awards
-        if args.awards == True:  
+        if args.awards == "true":  
             if post.all_awardings:
                 awardsString = []
                 awardsString = '"' + ''.join(map(str,post.all_awardings)) + '"'
@@ -174,7 +174,7 @@ def getUnorderedComments():
             comment_permalinks.append(comment.permalink)
             comment_postlocked.append(submission.locked)
             comment_NSFW.append(submission.over_18)
-            if args.awards == True:  
+            if args.awards == "true":  
                 if(comment.all_awardings):
                     awardsString = []
                     awardsString = '"' + ''.join(map(str,comment.all_awardings)) + '"'
@@ -207,7 +207,7 @@ def getOrderedComments():
             posts = subreddit.hot(limit=int(args.numberOfPosts))
     for submission in posts:
         awarded = ""
-        if args.awards == True:  
+        if args.awards == "true":  
             if submission.all_awardings:
                 awarded = "TRUE"
             else:
