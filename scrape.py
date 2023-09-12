@@ -8,9 +8,9 @@ from dateutil.tz import tzutc, tzlocal
 # Get arguments from command line
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-subreddit", help="please enter the name of the subreddit")
+parser.add_argument("-subreddit", help="Please enter the name of the subreddit you want to scrape.", default="all")
 parser.add_argument("-time", help="please enter a time period to search: all, day, hour, month, week, year. default is all", default="all")
-parser.add_argument("-numberOfPosts", help="please enter a number of posts to scrape", default="10")
+parser.add_argument("-numberOfPosts", help="please enter a number of posts to scrape", default="1000")
 parser.add_argument("-query", help="please enter a query to search for in the subreddit", required=False)
 parser.add_argument("-filename", help="enter a filename")
 args = parser.parse_args()
