@@ -8,13 +8,13 @@ from dateutil.tz import tzutc, tzlocal
 # Get arguments from command line
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-subreddit", help="Please enter the name of the subreddit you want to scrape.", default="all")
-parser.add_argument("-sort", help="Which algorithm is used to determine the scraped posts. Options are 'top' 'new' 'rising' 'hot'. Default is top.", default="top")
-parser.add_argument("-time", help="If you're sorting by top, please enter a time period to search: all, day, hour, month, week, year. default is all", default="all")
-parser.add_argument("-numberOfPosts", help="Please enter a number of posts to scrape. Default is 1000.", default="5")
-parser.add_argument("-query", help="Please enter a query to search for in the subreddit.", required=False)
-parser.add_argument("-filename", help="Please enter a filename for the scraped data.")
-parser.add_argument("-awards", help="If you want to get the awards a post / comment has (e.g. Reddit Gold), set -awards to 'true'. Warning: the awards on some subreddits may mess up your data.", default="false")
+parser.add_argument("-su", "--subreddit", help="Please enter the name of the subreddit you want to scrape.", default="all")
+parser.add_argument("-sq", "--query", help="Please enter a query to search for in the subreddit.", required=False)
+parser.add_argument("-so", "--sort", help="Which algorithm is used to determine the scraped posts. Options are 'top' 'new' 'rising' 'hot'. Default is top. Does not work if searching", default="top")
+parser.add_argument("-t", "--time", help="If you're sorting by top, please enter a time period to search: all, day, hour, month, week, year. default is all", default="all")
+parser.add_argument("-n", "--numberOfPosts", help="Please enter a number of posts to scrape. Default is 1000.", default="5")
+parser.add_argument("-a", "--awards", help="If you want to get the awards a post / comment has (e.g. Reddit Gold), set --awards to 'true'. Warning: the awards on some subreddits may mess up your data.", default="false")
+parser.add_argument("-f", "--filename", help="Please enter a filename for the scraped data.")
 args = parser.parse_args()
 
 # Converts scraped data time stamps from UTC to 
@@ -24,26 +24,28 @@ def utcToLocal(utcFloat):
     return convertedTime
 
 def checkComments(comments):
-    reverseComments = []
-    for comment in reverseComments:
+    with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a", encoding="utf-8") as txt:
         if comment.parent() == comment.submission.id:
-            with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a", encoding="utf-8") as txt:
-                txt.write("---\n")
-        with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a", encoding="utf-8") as txt:
+            txt.write("---\n")
+
+        if args.awards == "true":
             awarded = ""
             if comment.all_awardings:
                 awarded = "TRUE"
             else:
                 awarded = "FALSE"
-            parent = ""
-            indent = ""
-            if comment.parent() == comment.submission.id:
-                parent = "Top Level"
-            else:
-                parent = comment.parent().id 
-                indent = ""
-            txt.write(indent + "[Comment ID:" + comment.id + " Reply to: " + parent + "]" + str(comment.author) + ": " + comment.body + "\n")         
-            checkComments(comment.replies)
+
+        parent = ""
+        indent = ""
+        if comment.parent() == comment.submission.id:
+            parent = "Top Level"
+        else:
+            traceComment = comment
+            while traceID != comment.submission.id:
+                traceID = traceComment.parent().id
+                indent = indent + "     "
+        txt.write(indent + "[Comment ID:" + comment.id + " Reply to: " + parent + "]" + str(comment.author) + ": " + comment.body.replace("\n", "") + "\n")         
+        checkComments(comment.replies)
 
 def processSub(sub):
     sub.replace_more(limit=0)
@@ -129,7 +131,6 @@ def getPosts():
             posts_dict["Awards"].append("")
             posts_dict["Awarded"].append("")
 
-    print(posts_dict)
     posts_df = pd.DataFrame(posts_dict)
     posts_df.to_csv("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_posts.csv", index=True)
 
@@ -195,7 +196,6 @@ def getOrderedComments():
     posts = []
     if(args.query is not None):
         posts = subreddit.search(args.query, limit=int(args.numberOfPosts))
-        print("scraping: " + args.query) 
     else:
         if (args.sort == "top"):
             posts = subreddit.top(time_filter=args.time, limit=int(args.numberOfPosts))
@@ -236,57 +236,3 @@ subreddit = reddit.subreddit(args.subreddit)
 getPosts()
 getUnorderedComments()
 getOrderedComments()
-
-
-
-
-    
-
-    # Get Nested Comments as .txt
-
-    # conversedict_df = pd.DataFrame.from_dict(conversedict, orient="index")
-    # conversedict_df.to_csv(args.subreddit + "_commentsNested.csv")
-
-    # Dictionary Format#
-    # conversedict = {post_id: [parent_content, {reply_id:[votes, reply_content],
-    #                                             reply_id:[votes, reply_content],
-    #                                             reply_id:[votes, reply_content]}],
-
-    #                 post_id: [parent_content, {reply_id:[votes, reply_content],
-    #                                             reply_id:[votes, reply_content],
-    #                                             reply_id:[votes, reply_content]}],
-                                                
-    #                 post_id: [parent_content, {reply_id:[votes, reply_content],
-    #                                             reply_id:[votes, reply_content],
-    #                                             reply_id:[votes, reply_content]}],
-    #                 }
-
-
-            #     print('Title: {}, author:{}, ups: {}, downs: {}, Have we visited?: {}, subid: {}'.format(submission.title,
-            #                                                                                            submission.author,
-            #                                                                                            submission.ups,
-            #                                                                                            submission.downs,
-            #                                                                                            submission.visited,
-            #                                                                                            submission.id,))
-            # 
-
-                    # if submission.id not in commentdict and not submission.stickied:
-        #     commentdict[str(submission.id)] = [submission.title, submission.author, submission.ups, submission.downs, submission.visited, submission.id, {}]
-        #     submission.comments.replace_more(limit=0)
-        #     for comment in submission.comments.list():
-        #         commentdict[submission.id][1][comment.id] = [comment.ups, comment.body, {}]
-        #         for nestedComment in comment.replies:
-        #             commentdict[submission.id][1][comment.id][1][nestedComment.id] = [nestedComment.ups, nestedComment.body, {}]
-
-                        # if comment.id not in conversedict:
-                    # commentdict[comment.id] = [comment.body,{}]
-                    # if comment.parent() != submission.id:
-                    #     parent = str(comment.parent())
-                    #     conversedict[parent][1][comment.id] = [comment.ups, comment.body]
-
-                                # for comment in submission.comments.list():
-            #     if comment.id not in conversedict:
-            #         conversedict[comment.id] = [comment.body,{}]
-            #         if comment.parent() != submission.id:
-            #             parent = str(comment.parent())
-            #             conversedict[parent][1][comment.id] = [comment.ups, comment.body]

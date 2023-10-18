@@ -2,3 +2,4 @@
 praw.ini
 *.txt
 ScrapedData/
+*.xlsx
