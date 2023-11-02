@@ -3,3 +3,6 @@ praw.ini
 *.txt
 ScrapedData/
 *.xlsx
+Filter/FilteredData
+Filter/OldFilters
+FilteredData/

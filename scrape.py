@@ -11,46 +11,59 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-su", "--subreddit", help="Please enter the name of the subreddit you want to scrape.", default="all")
 parser.add_argument("-sq", "--query", help="Please enter a query to search for in the subreddit.", required=False)
 parser.add_argument("-so", "--sort", help="Which algorithm is used to determine the scraped posts. Options are 'top' 'new' 'rising' 'hot'. Default is top. Does not work if searching", default="top")
-parser.add_argument("-t", "--time", help="If you're sorting by top, please enter a time period to search: all, day, hour, month, week, year. default is all", default="all")
+parser.add_argument("-t", "--timePeriod", help="If you're sorting by top, please enter a time period to search: all, day, hour, month, week, year. default is all", default="all")
+parser.add_argument("-c", "--convertTime", help="By default, post/comment time stamps are in UTC. Enter 'true' to convert them to the offset in the --timeZone argument.", default="false")
+# parser.add_argument("-tz", "--timeZone", help="Enter an integer for the UTC-offset. Ex. EST is -5. To automatically use your computer's local time, enter 'local'.", default="-5")
 parser.add_argument("-n", "--numberOfPosts", help="Please enter a number of posts to scrape. Default is 1000.", default="5")
 parser.add_argument("-a", "--awards", help="If you want to get the awards a post / comment has (e.g. Reddit Gold), set --awards to 'true'. Warning: the awards on some subreddits may mess up your data.", default="false")
 parser.add_argument("-f", "--filename", help="Please enter a filename for the scraped data.")
 args = parser.parse_args()
 
-# Converts scraped data time stamps from UTC to 
-def utcToLocal(utcFloat):
-    utcTime = datetime.fromtimestamp(utcFloat)
-    convertedTime = utcTime.astimezone(tzlocal())
-    return convertedTime
+# Converts scraped data time stamps from UTC to your local timezone
+# def utcConvert(utcFloat):
+#     utcTime = datetime.fromtimestamp(utcFloat)
+#     convertedTime = utcTime
+#     if args.timeZone == "local":
+#         convertedTime = utcTime.astimezone(tzlocal())
+#     else:
+#         convertedTime = utcTime.astimezone()
+#     return convertedTime
 
-def checkComments(comments):
-    with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a", encoding="utf-8") as txt:
-        if comment.parent() == comment.submission.id:
-            txt.write("---\n")
+# checkComments and processSub are based on code by jpreed00, and are used to print comments in a .txt file that keeps them in their conversational structure.
+# def checkComments(comments):
+#     with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a", encoding="utf-8") as txt:
+#         for comment in comments:
+#             if comment.parent() == comment.submission.id:
+#                 txt.write("---\n")
 
-        if args.awards == "true":
-            awarded = ""
-            if comment.all_awardings:
-                awarded = "TRUE"
-            else:
-                awarded = "FALSE"
+#             if args.awards == "true":
+#                 awarded = ""
+#                 if comment.all_awardings:
+#                     awarded = "TRUE"
+#                 else:
+#                     awarded = "FALSE"
 
-        parent = ""
-        indent = ""
-        if comment.parent() == comment.submission.id:
-            parent = "Top Level"
-        else:
-            traceComment = comment
-            while traceID != comment.submission.id:
-                traceID = traceComment.parent().id
-                indent = indent + "     "
-        txt.write(indent + "[Comment ID:" + comment.id + " Reply to: " + parent + "]" + str(comment.author) + ": " + comment.body.replace("\n", "") + "\n")         
-        checkComments(comment.replies)
+#             parent = ""
+#             indent = ""
+#             traceID = ""
+#             if comment.parent() == comment.submission.id:
+#                 parent = "Top Level"
+#             else:
+#                 traceComment = comment
+#                 while traceID != comment.submission.id:
+#                     traceID = traceComment.parent().id
+#                     indent = indent + "     "
+#                     traceComment = traceComment.parent()
+#                 parent = comment.parent().id
+#             print(parent)
+#             txt.write(indent + "[Comment ID:" + comment.id + " Reply to: " + parent + "]" + str(comment.author) + ": " + comment.body.replace("\n", "") + "\n")         
+#             checkComments(comment.replies)
 
-def processSub(sub):
-    sub.replace_more(limit=0)
-    checkComments(sub)
+# def processSub(sub):
+#     sub.replace_more(limit=0)
+#     checkComments(sub)
 
+# Retrieves up to 1000 posts using the provided subreddit, query, numberOfPosts, and timePeriod
 def getPosts():
     posts = []
     if(args.query is not None):
@@ -58,7 +71,7 @@ def getPosts():
         print("scraping: " + args.query) 
     else:
         if (args.sort == "top"):
-            posts = subreddit.top(time_filter=args.time, limit=int(args.numberOfPosts))
+            posts = subreddit.top(time_filter=args.timePeriod, limit=int(args.numberOfPosts))
         elif (args.sort == "new"):
             posts = subreddit.new(limit=int(args.numberOfPosts))
         elif (args.sort == "rising"):
@@ -79,7 +92,7 @@ def getPosts():
         posts_dict["Subreddit"].append(post.subreddit)
 
         # Time of Post
-        posts_dict["Date"].append(utcToLocal(post.created_utc))
+        posts_dict["Date"].append(post.created_utc)
 
         # Title of each post
         posts_dict["Title"].append(post.title)
@@ -134,6 +147,8 @@ def getPosts():
     posts_df = pd.DataFrame(posts_dict)
     posts_df.to_csv("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_posts.csv", index=True)
 
+
+# Retrieves comments from the posts scraped and writes to a .csv file.
 def getUnorderedComments():
     posts = []
     if(args.query is not None):
@@ -141,7 +156,7 @@ def getUnorderedComments():
         print("scraping: " + args.query) 
     else:
         if (args.sort == "top"):
-            posts = subreddit.top(time_filter=args.time, limit=int(args.numberOfPosts))
+            posts = subreddit.top(time_filter=args.timePeriod, limit=int(args.numberOfPosts))
         elif (args.sort == "new"):
             posts = subreddit.new(limit=int(args.numberOfPosts))
         elif (args.sort == "rising"):
@@ -166,7 +181,7 @@ def getUnorderedComments():
         for comment in submission.comments.list():
             comment_submissions.append(comment.submission.id)
             comment_ids.append(comment.id)
-            comment_dates.append(utcToLocal(comment.created_utc))
+            comment_dates.append(comment.created_utc)
             comment_authors.append((str(comment.author)))
             comment_authorflairs.append(comment.author_flair_text)
             comment_bodies.append(comment.body)
@@ -192,47 +207,56 @@ def getUnorderedComments():
     comments_df = pd.DataFrame(comment_dict)
     comments_df.to_csv("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_comments.csv", index=True)
 
-def getOrderedComments():
-    posts = []
-    if(args.query is not None):
-        posts = subreddit.search(args.query, limit=int(args.numberOfPosts))
-    else:
-        if (args.sort == "top"):
-            posts = subreddit.top(time_filter=args.time, limit=int(args.numberOfPosts))
-        elif (args.sort == "new"):
-            posts = subreddit.new(limit=int(args.numberOfPosts))
-        elif (args.sort == "rising"):
-            posts = subreddit.rising(limit=int(args.numberOfPosts))
-        elif (args.sort == "hot"):
-            posts = subreddit.hot(limit=int(args.numberOfPosts))
-    for submission in posts:
-        awarded = ""
-        if args.awards == "true":  
-            if submission.all_awardings:
-                awarded = "TRUE"
-            else:
-                awarded = "FALSE"
-        else:
-            awarded = ""
+# By default, the comments are pulled from the API in an order
+# that makes it difficult to follow conversations because it pulls 
+# all the first-level comments, then all the second-level comments, and so on.
+# This function is meant to get print the comments in a more readable format to a .txt file.
+# It does not work quite right yet.
+# def getOrderedComments():
+#     posts = []
+#     if(args.query is not None):
+#         posts = subreddit.search(args.query, limit=int(args.numberOfPosts))
+#     else:
+#         if (args.sort == "top"):
+#             posts = subreddit.top(time_filter=args.timePeriod, limit=int(args.numberOfPosts))
+#         elif (args.sort == "new"):
+#             posts = subreddit.new(limit=int(args.numberOfPosts))
+#         elif (args.sort == "rising"):
+#             posts = subreddit.rising(limit=int(args.numberOfPosts))
+#         elif (args.sort == "hot"):
+#             posts = subreddit.hot(limit=int(args.numberOfPosts))
+#     for submission in posts:
+#         awarded = ""
+#         if args.awards == "true":  
+#             if submission.all_awardings:
+#                 awarded = "TRUE"
+#             else:
+#                 awarded = "FALSE"
+#         else:
+#             awarded = ""
 
-        with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a") as txt:
-            txt.write("Post Data: [" + 'Subreddit: {}, Date: {}, Title: {}, Author: {}, AuthorFlair: {}, Score: {}, ID: {}, Link: {}, Locked: {}, NSFW: {}, Awarded: {}, Comments: {}'.format(str(submission.subreddit).encode("utf-8"),
-                                                                                  str(utcToLocal(submission.created_utc)).encode("utf-8"),
-                                                                                  str(submission.title).encode("utf-8"),
-                                                                                  str(submission.author).encode("utf-8"),
-                                                                                  str(submission.author_flair_text).encode("utf-8"),
-                                                                                  str(submission.score).encode("utf-8"),
-                                                                                  str(submission.id).encode("utf-8"),
-                                                                                  str(submission.permalink).encode("utf-8"),
-                                                                                  str(submission.locked).encode("utf-8"),
-                                                                                  str(submission.over_18).encode("utf-8"),
-                                                                                  awarded,
-                                                                                  str(submission.num_comments).encode("utf-8")) + "]" + "\n")
-        processSub(submission.comments)
+#         time = str(submission.created_utc).encode("utf-8")
+#         # if args.convertTime == "true":
+#         #     time = uctConvert(str(time).encode("utf-8")) 
+
+#         with open("./ScrapedData/" + args.subreddit + "_" + str(args.filename) + "_orderedComments.txt", "a") as txt:
+#             txt.write("\nPost Data: [" + 'Subreddit: {}, Date: {}, Title: {}, Author: {}, AuthorFlair: {}, Score: {}, ID: {}, Link: {}, Locked: {}, NSFW: {}, Awarded: {}, Comments: {}'.format(str(submission.subreddit).encode("utf-8"),
+#                                                                                   time,
+#                                                                                   str(submission.title).encode("utf-8"),
+#                                                                                   str(submission.author).encode("utf-8"),
+#                                                                                   str(submission.author_flair_text).encode("utf-8"),
+#                                                                                   str(submission.score).encode("utf-8"),
+#                                                                                   str(submission.id).encode("utf-8"),
+#                                                                                   str(submission.permalink).encode("utf-8"),
+#                                                                                   str(submission.locked).encode("utf-8"),
+#                                                                                   str(submission.over_18).encode("utf-8"),
+#                                                                                   awarded,
+#                                                                                   str(submission.num_comments).encode("utf-8")) + "]" + "\n\n")
+        # processSub(submission.comments)
 
 reddit = praw.Reddit("scraper")
 subreddit = reddit.subreddit(args.subreddit)
 
 getPosts()
 getUnorderedComments()
-getOrderedComments()
+# getOrderedComments()

@@ -1,3 +1,13 @@
+# CSVFilter.py
+# Mirek Stolee
+# November 2, 2023
+
+# Used to filter out terms from the scraped data.
+# Given a .csv file in ./ScrapedData, it filters for the search query
+# and generates a new .csv file in ./FilteredData
+# the filepath for the scraped data .csv is: "./ScrapedData/" + subreddit + "_" + scrapeQuery + "_" + scrapeType + ".csv"
+# The filepath for the new .csv file is exportName = "./FilteredData/" + subreddit + "_" + filename + ".csv"
+
 import pandas as pd
 import numpy as np
 import argparse
@@ -32,23 +42,28 @@ def filterByList(df, queryTXT, filterType):
 	filteredDF = filteredDF.drop_duplicates()
 	return filteredDF
 
+# Parse Arguments
 subreddit = args.subreddit
 scrapeQuery = args.searchQuery
 scrapeType = args.scrapeType
 column = args.column
 filterOut = args.filterOut
-filename = "./" + subreddit + "_" + scrapeQuery + "_" + scrapeType + ".csv"
-
+filename = "./ScrapedData/" + subreddit + "_" + scrapeQuery + "_" + scrapeType + ".csv"
 filterQuery = args.filterQuery
 filterQueryName = args.filename
 exportName = "./FilteredData/" + subreddit + "_" + filterQueryName + ".csv"
 
+# Filter:
+# If using a .txt file, reads from the file. Otherwise, filters using the filterQuery string
 df = pd.read_csv(filename)
 if ".txt" in filterQuery:
 	df = filterByList(df, filterQuery, "query")
 else:
 	df = df[df[column].str.lower().str.contains(filterQuery, case=False, na=False)]
 
+# Filtering out:
+# Creates two datasets - one with the data you want, and one with the data you don't,
+# then removes any rows from the first dataset that are also in the second
 filterOut_df = ""
 if filterOut != "None":
 	if ".txt" in filterOut:
@@ -56,5 +71,7 @@ if filterOut != "None":
 	else:
 		filterOut_df = df[df[column].str.lower().str.contains(filterOut, case=False, na=False)]
 	df = df[~df.isin(filterOut_df)]
+
+# Removes duplicate rows and exports to CSV
 df.dropna(how="all", inplace=True)
 df.to_csv(exportName, index=False)
